@@ -35,7 +35,9 @@ import Loading from 'src/components/Loading';
 
 // Session storage key for recent dashboard
 const SK_DASHBOARD_ID = 'save_chart_recent_dashboard';
-const SELECT_PLACEHOLDER = t('**Select** a dashboard OR **create** a new one');
+const SELECT_PLACEHOLDER = t(
+  'Select a dashboard or **create new** by typing a name and clicking enter',
+);
 
 interface SaveModalProps extends RouteComponentProps {
   addDangerToast: (msg: string) => void;
@@ -50,6 +52,7 @@ interface SaveModalProps extends RouteComponentProps {
   datasource?: Record<string, any>;
   dashboardId: '' | number | null;
   sliceDashboards: number[];
+  showDeselectWarning: boolean;
 }
 
 type ActionType = 'overwrite' | 'saveas';
@@ -63,6 +66,7 @@ type SaveModalState = {
   action: ActionType;
   isLoading: boolean;
   saveStatus?: string | null;
+  showDeselectWarning: boolean;
 };
 
 export const StyledModal = styled(Modal)`
@@ -86,12 +90,15 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
       alert: null,
       action: this.canOverwriteSlice() ? 'overwrite' : 'saveas',
       isLoading: false,
+      showDeselectWarning: false,
     };
     this.onDashboardSelectChange = this.onDashboardSelectChange.bind(this);
     this.onSliceNameChange = this.onSliceNameChange.bind(this);
     this.changeAction = this.changeAction.bind(this);
     this.saveOrOverwrite = this.saveOrOverwrite.bind(this);
     this.isNewDashboard = this.isNewDashboard.bind(this);
+    this.onDeselect = this.onDeselect.bind(this);
+    this.onDeselectWarningClose = this.onDeselectWarningClose.bind(this);
   }
 
   isNewDashboard(): boolean {
@@ -144,8 +151,37 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     this.setState({ saveToDashboardId, newDashboardName });
   }
 
+  onDeselect() {
+    this.setState({ showDeselectWarning: true });
+  }
+
+  onDeselectWarningClose() {
+    this.setState({ showDeselectWarning: false });
+  }
+
   changeAction(action: ActionType) {
     this.setState({ action });
+  }
+
+  getAddToDashboardTooltip() {
+    if (this.state.action === 'overwrite') {
+      return t(
+        `You can add your chart to multiple dashboards at once.
+        If there are already some dashboards visible it means that
+        this chart is already added to them.
+        
+        You can create a new dashboard by typing the name
+        and hitting enter.
+        `,
+      );
+    }
+    return t(
+      `You can add your chart to multiple dashboards at once.
+      
+      You can create a new dashboard by typing the name
+      and hitting enter.
+      `,
+    );
   }
 
   async saveOrOverwrite(gotodash: boolean) {
@@ -309,6 +345,14 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           </Radio>
         </FormItem>
         <hr />
+        {this.state.showDeselectWarning && (
+          <Alert
+            type="warning"
+            message="You removed dashboards this chart is already added to"
+            description="When you save the selection, chart will be removed from those dashboards."
+            afterClose={this.onDeselectWarningClose}
+          />
+        )}
         <FormItem label={t('Chart name')} required>
           <Input
             name="new_slice_name"
@@ -339,13 +383,20 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           label={t('Add to dashboard')}
           data-test="save-chart-modal-select-dashboard-form"
         >
+          <InfoTooltipWithTrigger
+            tooltip={this.getAddToDashboardTooltip()}
+            iconsStyle={{ left: '130px' }}
+          />
           <Select
+            mode="multiple"
             allowClear
             allowNewOptions
             ariaLabel={t('Select a dashboard')}
             options={this.props.dashboards}
             onChange={this.onDashboardSelectChange}
+            onDeselect={this.onDeselect}
             value={dashboardSelectValue || undefined}
+            helperText={SELECT_PLACEHOLDER.replace(/\*/g, '')}
             placeholder={
               // Using markdown to allow for good i18n
               <ReactMarkdown

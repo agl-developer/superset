@@ -126,6 +126,13 @@ export interface SelectProps extends PickedSelectProps {
    * Will not apply to predefined `options` array when users are not searching.
    */
   sortComparator?: typeof DEFAULT_SORT_COMPARATOR;
+
+  /**
+   * Called when an option is deselected, param is the selected option's value.
+   * Only called for multiple or tags, effective in multiple or tags mode only
+   * @param value
+   */
+  onDeselect?: (value: string | number | AntdLabeledValue | undefined) => void;
 }
 
 const StyledContainer = styled.div`
@@ -243,6 +250,7 @@ const Select = forwardRef(
       filterOption = true,
       header = null,
       helperText,
+      onDeselect,
       invertSelection = false,
       labelInValue = false,
       loading,
@@ -352,6 +360,9 @@ const Select = forwardRef(
           const array = selectValue as (string | number)[];
           setSelectValue(array.filter(element => element !== value));
         }
+      }
+      if (onDeselect) {
+        onDeselect(value);
       }
       setInputValue('');
     };
