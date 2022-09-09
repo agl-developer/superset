@@ -27,7 +27,6 @@ import Modal from 'src/components/Modal';
 import { Radio } from 'src/components/Radio';
 import Button from 'src/components/Button';
 import { Select } from 'src/components';
-import { SelectValue } from 'antd/lib/select';
 import { connect } from 'react-redux';
 import { withRouter, RouteComponentProps } from 'react-router-dom';
 import { InfoTooltipWithTrigger } from '@superset-ui/chart-controls';
@@ -60,7 +59,7 @@ type ActionType = 'overwrite' | 'saveas';
 type SaveModalState = {
   saveToDashboardId: number | string | null;
   newSliceName?: string;
-  newDashboardName?: string;
+  newDashboardName?: number[];
   datasetName: string;
   alert: string | null;
   action: ActionType;
@@ -97,12 +96,19 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     this.changeAction = this.changeAction.bind(this);
     this.saveOrOverwrite = this.saveOrOverwrite.bind(this);
     this.isNewDashboard = this.isNewDashboard.bind(this);
-    this.onDeselect = this.onDeselect.bind(this);
+    this.onDashboardDeselect = this.onDashboardDeselect.bind(this);
     this.onDeselectWarningClose = this.onDeselectWarningClose.bind(this);
+    this.isRemovingExistingDashboard =
+      this.isRemovingExistingDashboard.bind(this);
+    this.onDashboardClear = this.onDashboardClear.bind(this);
   }
 
   isNewDashboard(): boolean {
     return !!(!this.state.saveToDashboardId && this.state.newDashboardName);
+  }
+
+  isRemovingExistingDashboard(dashboardToRemoveId: number) {
+    return this.props.sliceDashboards.includes(dashboardToRemoveId);
   }
 
   canOverwriteSlice(): boolean {
@@ -144,15 +150,23 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     this.setState({ newSliceName: event.target.value });
   }
 
-  onDashboardSelectChange(selected: SelectValue) {
-    const newDashboardName = selected ? String(selected) : undefined;
+  onDashboardSelectChange(selected: number[]) {
+    // todo remove possible unused code
     const saveToDashboardId =
       selected && typeof selected === 'number' ? selected : null;
-    this.setState({ saveToDashboardId, newDashboardName });
+    this.setState({ saveToDashboardId, newDashboardName: selected });
   }
 
-  onDeselect() {
-    this.setState({ showDeselectWarning: true });
+  onDashboardDeselect(value: string | number) {
+    if (this.isRemovingExistingDashboard(Number(value))) {
+      this.setState({ showDeselectWarning: true });
+    }
+  }
+
+  onDashboardClear() {
+    if (this.props.sliceDashboards.length) {
+      this.setState({ showDeselectWarning: true });
+    }
   }
 
   onDeselectWarningClose() {
@@ -394,7 +408,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
             ariaLabel={t('Select a dashboard')}
             options={this.props.dashboards}
             onChange={this.onDashboardSelectChange}
-            onDeselect={this.onDeselect}
+            onDeselect={this.onDashboardDeselect}
             value={dashboardSelectValue || undefined}
             helperText={SELECT_PLACEHOLDER.replace(/\*/g, '')}
             placeholder={
@@ -404,6 +418,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
                 renderers={{ paragraph: 'span' }}
               />
             }
+            onClear={this.onDashboardClear}
           />
         </FormItem>
       </Form>
