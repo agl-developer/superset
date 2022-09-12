@@ -66,6 +66,7 @@ type SaveModalState = {
   isLoading: boolean;
   saveStatus?: string | null;
   showDeselectWarning: boolean;
+  showNewDashboardSelectionModal: boolean;
 };
 
 export const StyledModal = styled(Modal)`
@@ -90,6 +91,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
       action: this.canOverwriteSlice() ? 'overwrite' : 'saveas',
       isLoading: false,
       showDeselectWarning: false,
+      showNewDashboardSelectionModal: false,
     };
     this.onDashboardSelectChange = this.onDashboardSelectChange.bind(this);
     this.onSliceNameChange = this.onSliceNameChange.bind(this);
@@ -101,14 +103,28 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     this.isRemovingExistingDashboard =
       this.isRemovingExistingDashboard.bind(this);
     this.onDashboardClear = this.onDashboardClear.bind(this);
+    this.multipleNewDashboards = this.multipleNewDashboards.bind(this);
   }
 
   isNewDashboard(): boolean {
     return !!(!this.state.saveToDashboardId && this.state.newDashboardName);
   }
 
-  isRemovingExistingDashboard(dashboardToRemoveId: number) {
+  isRemovingExistingDashboard(dashboardToRemoveId: number): boolean {
     return this.props.sliceDashboards.includes(dashboardToRemoveId);
+  }
+
+  multipleNewDashboards(): boolean {
+    let count = 0;
+    if (!this.state.newDashboardName) {
+      return false;
+    }
+    this.state.newDashboardName.forEach(id => {
+      if (!this.props.sliceDashboards.includes(id)) {
+        count += 1;
+      }
+    });
+    return count > 1;
   }
 
   canOverwriteSlice(): boolean {
@@ -199,6 +215,10 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
   }
 
   async saveOrOverwrite(gotodash: boolean) {
+    if (this.multipleNewDashboards()) {
+      this.setState({ showNewDashboardSelectionModal: true });
+      return;
+    }
     this.setState({ alert: null, isLoading: true });
     this.props.actions.removeSaveModalAlert();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -313,6 +333,19 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
 
     this.setState({ isLoading: false });
     this.props.onHide();
+  }
+
+  renderNewDashboardSelection() {
+    // const selectedDashboards = [];
+    // this.props.dashboards.forEach()
+    return (
+      <Select
+        ariaLabel={t('Select a dashboard')}
+        options={this.props.dashboards.filter(d =>
+          this.state.newDashboardName?.includes(d.value),
+        )}
+      />
+    );
   }
 
   renderSaveChartModal = () => {
@@ -467,6 +500,13 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     </div>
   );
 
+  renderModalBody() {
+    if (this.state.showNewDashboardSelectionModal) {
+      return this.renderNewDashboardSelection();
+    }
+    return this.renderSaveChartModal();
+  }
+
   removeAlert() {
     if (this.props.alert) {
       this.props.actions.removeSaveModalAlert();
@@ -485,7 +525,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
         {this.state.isLoading ? (
           <Loading position="normal" />
         ) : (
-          this.renderSaveChartModal()
+          this.renderModalBody()
         )}
       </StyledModal>
     );
