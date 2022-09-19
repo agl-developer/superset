@@ -256,6 +256,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     let dashboard: DashboardGetResponse | null = null;
     if (this.state.newDashboardName || this.state.saveToDashboardId) {
       let saveToDashboardId = this.state.saveToDashboardId || null;
+      // todo possible solution: loop through the ids and call the endpoint for each
       if (!this.state.saveToDashboardId) {
         promise = promise
           .then(() =>
